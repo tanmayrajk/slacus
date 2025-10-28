@@ -6,13 +6,12 @@
   "author": "Tanmay Raj Krishna <tanmayrajkrishna@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "server": "tsx watch src/server.ts",
+    "server": "tsx watch src/api/server.ts",
     "main": "tsx watch src/index.ts",
     "dev": "concurrently \"yarn server\" \"yarn main\""
   },
   "dependencies": {
     "@slack/web-api": "^7.12.0",
-    "concurrently": "^9.2.1",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "kleur": "^4.1.5",
@@ -23,6 +22,7 @@
     "@types/express": "^5.0.4",
     "@types/node": "^24.9.1",
     "@types/spotify-web-api-node": "^5.0.11",
+    "concurrently": "^9.2.1",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3"
   }
