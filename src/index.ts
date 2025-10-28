@@ -1,6 +1,8 @@
 import 'dotenv/config'
 import SpotifyWebApi from 'spotify-web-api-node';
 import { WebClient } from '@slack/web-api';
+import { SpotifyCurrentlyPlayingSchema } from './types';
+import z from 'zod';
 
 const slackToken = process.env.SLACK_USER_OAUTH_TOKEN;
 const spotifyClientId = process.env.SPOTIFY_CLIENT_ID;
@@ -17,7 +19,7 @@ const slack = new WebClient(slackToken);
 spotify.setRefreshToken(spotifyRefreshToken as string);
 spotify.setAccessToken((await spotify.refreshAccessToken()).body.access_token);
 
-async function getCurrentlyPlayingTrack() {
+async function getCurrentlyPlayingTrack(): Promise<z.infer<typeof SpotifyCurrentlyPlayingSchema> | null> {
     try {
         const data = await fetch("https://api.spotify.com/v1/me/player/currently-playing", {
             headers: {
@@ -26,14 +28,17 @@ async function getCurrentlyPlayingTrack() {
         })
         if (data.status === 401) throw { statusCode: 401 };
         const playback = await data.json();
+        console.log(playback)
         if (!playback || !playback.item) return null;
-        return playback;
+        const a = SpotifyCurrentlyPlayingSchema.parse(playback);
+        return a
     } catch (err) {
         if ((err as any).statusCode === 401) {
             const data = await spotify.refreshAccessToken();
             spotify.setAccessToken(data.body.access_token);
             return getCurrentlyPlayingTrack();
         }
+        console.error(err);
         return null;
     }
 }
@@ -57,7 +62,8 @@ async function setSpotifyStatus() {
     const track = await getCurrentlyPlayingTrack();
     if (!track || !track.is_playing) return await setSlackStatus("", "")
     const trackName = track.item.name;
-    const artists = track.item.artists.map((artist: any) => artist.name).join(", ");
+    const artists = track.item.artists.map(artist => artist.name).join(", ");
+    console.log(`currently playing: ${artists} - ${trackName}`);
     await setSlackStatus(`${artists} - ${trackName}`, ":disc-spinning:");
 }
 
