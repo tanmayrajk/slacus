@@ -3,6 +3,7 @@ import SpotifyWebApi from 'spotify-web-api-node';
 import { WebClient } from '@slack/web-api';
 import { SpotifyCurrentlyPlayingSchema } from './types';
 import z from 'zod';
+import kleur from 'kleur';
 
 const slackToken = process.env.SLACK_USER_OAUTH_TOKEN;
 const spotifyClientId = process.env.SPOTIFY_CLIENT_ID;
@@ -27,8 +28,8 @@ async function getCurrentlyPlayingTrack(): Promise<z.infer<typeof SpotifyCurrent
             }
         })
         if (data.status === 401) throw { statusCode: 401 };
+        if (data.status === 204) throw { statusCode: 204}
         const playback = await data.json();
-        console.log(playback)
         if (!playback || !playback.item) return null;
         const a = SpotifyCurrentlyPlayingSchema.parse(playback);
         return a
@@ -38,6 +39,16 @@ async function getCurrentlyPlayingTrack(): Promise<z.infer<typeof SpotifyCurrent
             spotify.setAccessToken(data.body.access_token);
             return getCurrentlyPlayingTrack();
         }
+        if ((err as any).statusCode === 204) {
+            console.log(kleur.bold(kleur.yellow("😥 No track currently playing")))
+            return null;
+        }
+
+        if (err instanceof TypeError && err.message === "fetch failed") {
+            console.error(kleur.bold(kleur.red("❌ Unable to reach Spotify API")));
+            return null;
+        }
+        
         console.error(err);
         return null;
     }
@@ -52,9 +63,9 @@ async function setSlackStatus(text: string, emoji: string) {
                 status_expiration: 0
             }
         })
-        console.log("status updated");
+        console.log(kleur.bold(kleur.green("✅ Slack status updated")));
     } catch (err) {
-        console.error(err);
+        // console.error(err);
     }
 }
 
@@ -63,7 +74,7 @@ async function setSpotifyStatus() {
     if (!track || !track.is_playing) return await setSlackStatus("", "")
     const trackName = track.item.name;
     const artists = track.item.artists.map(artist => artist.name).join(", ");
-    console.log(`currently playing: ${artists} - ${trackName}`);
+    console.log(kleur.bold(kleur.blue(`🎵 ${artists} - ${trackName}`)));
     await setSlackStatus(`${artists} - ${trackName}`, ":disc-spinning:");
 }
 
