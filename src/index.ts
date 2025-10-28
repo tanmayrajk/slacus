@@ -4,6 +4,19 @@ import { WebClient } from '@slack/web-api';
 import { SpotifyCurrentlyPlayingSchema } from './types';
 import z from 'zod';
 import kleur from 'kleur';
+import fs from "fs"
+
+let canUpdate = true;
+
+function updateCanUpdate() {
+    try {
+        const data = fs.readFileSync("src/db.json", "utf-8");
+        const db = JSON.parse(data);
+        canUpdate = db.canUpdate;
+    } catch (err) {
+        console.error(err);
+    }
+}
 
 const slackToken = process.env.SLACK_USER_OAUTH_TOKEN;
 const spotifyClientId = process.env.SPOTIFY_CLIENT_ID;
@@ -28,7 +41,7 @@ async function getCurrentlyPlayingTrack(): Promise<z.infer<typeof SpotifyCurrent
             }
         })
         if (data.status === 401) throw { statusCode: 401 };
-        if (data.status === 204) throw { statusCode: 204}
+        if (data.status === 204) throw { statusCode: 204 }
         const playback = await data.json();
         if (!playback || !playback.item) return null;
         const a = SpotifyCurrentlyPlayingSchema.parse(playback);
@@ -48,7 +61,7 @@ async function getCurrentlyPlayingTrack(): Promise<z.infer<typeof SpotifyCurrent
             console.error(kleur.bold(kleur.red("❌ Unable to reach Spotify API")));
             return null;
         }
-        
+
         console.error(err);
         return null;
     }
@@ -65,11 +78,16 @@ async function setSlackStatus(text: string, emoji: string) {
         })
         console.log(kleur.bold(kleur.green("✅ Slack status updated")));
     } catch (err) {
-        // console.error(err);
+        console.error(err);
     }
 }
 
 async function setSpotifyStatus() {
+    updateCanUpdate();
+    if (!canUpdate) {
+        console.log(kleur.bold(kleur.gray("⏸️  Status updates are disabled")));
+        return await setSlackStatus("", "");
+    }
     const track = await getCurrentlyPlayingTrack();
     if (!track || !track.is_playing) return await setSlackStatus("", "")
     const trackName = track.item.name;
