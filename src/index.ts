@@ -10,7 +10,7 @@ let canUpdate = true;
 
 function updateCanUpdate() {
     try {
-        const data = fs.readFileSync("src/db.json", "utf-8");
+        const data = fs.readFileSync("db.json", "utf-8");
         const db = JSON.parse(data);
         canUpdate = db.canUpdate;
     } catch (err) {
